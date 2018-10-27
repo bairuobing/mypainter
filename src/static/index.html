@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,61 +20,99 @@
         height: 10px;
         border: 1px solid rgb(145, 145, 145);
     }
+    .canvas {
+        display: inline-block;
+        border: 1px solid black;
+    }
 </style>
+
 <body>
     <div id="app">
         <div class="canvas">
-            <div class="row" 
-                v-for="(row, y) in pixelData">
-                <span class="dot"
-                    @click="drawDot(x, y, color)"
-                    v-for="(dotColor, x) in row" 
-                    :style="{background: dotColor}"></span>
-            </div>
+            <canvas @click="drawDot" ref="canvas" :width="width" :height="height"></canvas>
         </div>
         <input type="color" v-model="color">
         <label v-for="c in commonColors" :style="{color: c}">
-            <input type="radio" 
-                :value="c" 
-                v-model="color">{{c}}
+            <input type="radio" :value="c" v-model="color">{{c}}
         </label>
     </div>
 </body>
+
+<!-- <template>
+    <div class="row" v-for="(row, y) in pixelData">
+        <span class="dot" @click="drawDot(x, y, color)" v-for="(dotColor, x) in row" :style="{background: dotColor}"></span>
+    </div>
+</template> -->
+
 <script src="./vue-2.5.17.js"></script>
 <script>
     const app = new Vue({
         el: '#app',
         data: {
-            pixelData:[],
-            commonColors: ['black','red','orange','yellow','green','blue','aqua','purple','white'],
+            pixelData: [],
+            commonColors: ['black', 'red', 'orange', 'yellow', 'green', 'blue', 'aqua', 'purple', 'white'],
             color: 'black',
+            width: 0,
+            height: 0
         },
         methods: {
-            drawDot: function(x, y, color) {
-                // 该函数从客户端获取用户点击的颜色并发往服务器，等待服务器吐到页面上
+            // drawDot: function (x, y, color) {
+            //     // 该函数从客户端获取用户点击的颜色并发往服务器，等待服务器吐到页面上
+            //     this.ws.send(JSON.stringify({
+            //         type: 'drawDot',
+            //         x,
+            //         y,
+            //         color
+            //     }))
+            // }
+            drawDot: function(e) {
+                // 该函数参数表示鼠标点击事件（e），通过事件来追踪其点击的像素坐标
+                console.log(e)
+                
                 this.ws.send(JSON.stringify({
                     type: 'drawDot',
-                    x,
-                    y,
-                    color
+                    x: e.layerX,
+                    y: e.layerY,
+                    color: this.color
                 }))
             }
         },
         mounted() {
+            var canvas = this.$refs.canvas
+            // 获取canvas 绘图上下文
+            var ctx = canvas.getContext('2d')
+
             var ws = new WebSocket(`ws://${location.host}/yo`)
             this.ws = ws
-            ws.onmessage = ({data}) => {//event;
+            ws.onmessage = ({ data }) => {//event;
                 // 接收到由ws发过来的JSON对象
                 data = JSON.parse(data)
                 // 如果该对象type属性为 init，则全部用来初始化前端数据
-                if(data.type == 'init') {
-                    this.pixelData = data.pixelData
+                if (data.type == 'init') {
+                    // this.pixelData = data.pixelData
+                    // data.pixelData 二维数组
+                    this.width = data.pixelData[0].length
+                    this.height = data.pixelData.length
+
+                    // 向canvas 上画图像，但要注意绘制应该在w、h变更之后，使用 nextTick获得更新后后的DOM
+                    // forEach 函数第二个参数代表 index
+                    Vue.nextTick(() => {
+                        data.pixelData.forEach((row, y) => {
+                            row.forEach((color, x) => {
+                                ctx.fillStyle = color
+                                ctx.fillRect(x, y, 1, 1)
+                            })
+                        });
+                    })
                 }
-                if(data.type == 'updateDot') {
-                    Vue.set(this.pixelData[data.y], data.x, data.color)
+                if (data.type == 'updateDot') {
+                    ctx.fillStyle = data.color
+                    ctx.fillRect(data.x, data.y, 1, 1)
+                    // Vue.set(this.pixelData[data.y], data.x, data.color)
                 }
             }
         },
     })
 </script>
+
 </html>
