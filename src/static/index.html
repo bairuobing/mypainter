@@ -31,6 +31,7 @@
                     :style="{background: dotColor}"></span>
             </div>
         </div>
+        <input type="color" v-model="color">
         <label v-for="c in commonColors" :style="{color: c}">
             <input type="radio" 
                 :value="c" 
@@ -45,7 +46,7 @@
         data: {
             pixelData:[],
             commonColors: ['black','red','orange','yellow','green','blue','aqua','purple','white'],
-            color: 'blue',
+            color: 'black',
         },
         methods: {
             drawDot: function(x, y, color) {
@@ -59,7 +60,7 @@
             }
         },
         mounted() {
-            var ws = new WebSocket('ws://localhost:9095/yo')
+            var ws = new WebSocket(`ws://${location.host}/yo`)
             this.ws = ws
             ws.onmessage = ({data}) => {//event;
                 // 接收到由ws发过来的JSON对象
