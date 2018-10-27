@@ -8,8 +8,21 @@ const port = 9095
 const app = express()
 const server = http.createServer(app)
 const wss = new ws.Server({server})
-const pixelData = [['red','yellow'],['blue','green'],['blue','blue']]
-//用websocket通信
+// require就可以直接读取文件内的内容并 parse
+let pixelData
+try {
+    pixelData = require('./pixel.json')
+} catch (error) {
+    pixelData = new Array(70).fill(0).map(it => new Array(70).fill('white'))
+}
+
+// 不断的将数据以文件的形式保存下来记录（服务器挂掉不会影响数据）
+setInterval(() => {
+    fs.writeFile(path.join(__dirname, './pixel.json'), JSON.stringify(pixelData), (err) => {
+        console.log('data saved!')
+    })
+},3000)
+// 用websocket通信
 wss.on('connection', (ws, req) => {
     ws.send(JSON.stringify({
         pixelData: pixelData,
