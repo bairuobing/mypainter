@@ -1,2 +1,9 @@
-#pixel-painter
+# pixel-painter
+
+## v1.0 朴素线上交互画板功能
+
+## v2.0 用canvas实现画板界面
+### 提高服务器吞吐性能
+
+## v2.1 添加取色功能
 
