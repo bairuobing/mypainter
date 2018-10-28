@@ -36,6 +36,8 @@ wss.on('connection', (ws, req) => {
     let lastDraw = 0 // 最后一次戳点时间戳
     ws.on('message', msg => {
         msg = JSON.parse(msg)
+        // 解构赋值
+        // var {x, y, color} = msg
         let now = Date.now()
         // 如果一次连接中的两次消息间隔小于 200ms 则不允许再次发送
         if (now - lastDraw < 200) {

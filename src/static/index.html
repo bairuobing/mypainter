@@ -29,11 +29,12 @@
 <body>
     <div id="app">
         <div class="canvas">
-            <canvas @click="drawDot" ref="canvas" :width="width" :height="height"></canvas>
+            <canvas @click="handleCanvasClick" ref="canvas" :width="width" :height="height"></canvas>
         </div>
+        <button @click="isPickingColor = true">{{isPickingColor ? '正在取色' : '取色'}}</button>
         <input type="color" v-model="color">
-        <label v-for="c in commonColors" :style="{color: c}">
-            <input type="radio" :value="c" v-model="color">{{c}}
+        <label v-for="c in commonColors" :style="{color: c.value}">
+            <input type="radio" :value="c.value" v-model="color">{{c.name}}
         </label>
     </div>
 </body>
@@ -50,10 +51,48 @@
         el: '#app',
         data: {
             pixelData: [],
-            commonColors: ['black', 'red', 'orange', 'yellow', 'green', 'blue', 'aqua', 'purple', 'white'],
+            commonColors: [
+            { 
+                name: 'black', 
+                value: '#000000'
+            },
+            {
+                name: 'red', 
+                value: '#FF0000'
+            },
+            { 
+                name: 'orange', 
+                value:	'#FFA500'
+            },
+            { 
+                name: 'yellow', 
+                value: '#FFD700'
+            },
+            { 
+                name: 'green', 
+                value: '#008000'
+            },
+            { 
+                name: 'blue', 
+                value: '	#1E90FF'
+            },
+            { 
+                name: 'aqua', 
+                value:'#00FFFF'
+            },
+            { 
+                name: 'purple', 
+                value: '#800080'
+            },
+            { 
+                name: 'white',
+                value: '#FFFFFF'
+            },
+            ],
             color: 'black',
             width: 0,
-            height: 0
+            height: 0,
+            isPickingColor: false
         },
         methods: {
             // drawDot: function (x, y, color) {
@@ -65,8 +104,40 @@
             //         color
             //     }))
             // }
+
+            // 用于功能分发
+            handleCanvasClick: function(e) {
+                if(this.isPickingColor) {
+                    this.pickColor(e)
+                } else {
+                    this.drawDot(e)
+                }
+            },
+            // rgb值转16进制
+            rgba2hex: function(dot) {
+                var arr = []
+                arr.push(dot[0])
+                arr.push(dot[1])
+                arr.push(dot[2])
+                // dot = dot.map(it => {
+                //     it.toString(16).padStart(2, '0')
+                // })
+                
+                var dot = arr.map(it => it.toString(16).padStart(2, '0'))
+                // console.log(dot)
+                return '#' + dot[0] + dot[1] + dot[2]
+            },
+            pickColor: function(e) {
+                let x = e.layerX
+                let y = e.layerY
+                // 如何获取 canvas 的颜色，获取之后是一串数组（RGBA）
+                let p = this.ctx.getImageData(x, y, 1, 1).data
+                let hexColor = this.rgba2hex(p)
+                this.color = hexColor
+                this.isPickingColor = false
+            },
             drawDot: function(e) {
-                // 该函数参数表示鼠标点击事件（e），通过事件来追踪其点击的像素坐标
+                // 该函数参数表示(绑定的)鼠标点击事件（e），通过事件来追踪其点击的像素坐标
                 console.log(e)
                 
                 this.ws.send(JSON.stringify({
@@ -81,7 +152,8 @@
             var canvas = this.$refs.canvas
             // 获取canvas 绘图上下文
             var ctx = canvas.getContext('2d')
-
+            // 保存一份 ctx 在 this（Vue） 上，以备用
+            this.ctx = ctx
             var ws = new WebSocket(`ws://${location.host}/yo`)
             this.ws = ws
             ws.onmessage = ({ data }) => {//event;
