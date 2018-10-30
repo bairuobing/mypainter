@@ -10,8 +10,8 @@ const app = express()
 const server = http.createServer(app)
 const wss = new ws.Server({server})
 
-const width = 256
-const height = 256
+const width = 512
+const height = 512
 
 main()
 
@@ -19,17 +19,23 @@ main()
 let img 
 async function main() {
     try {
-        img = await Jimp.read(path.join(__dirname, './virginalImg.png'))
+        img = await Jimp.read(path.join(__dirname, './painterImg.png'))
     } catch (error) {
         // 使用 jimp 生成白色图片
         img = new Jimp(256, 256, 0xffffffff)
     }
-    
+
+    let lastUpdate = 0 
     // 不断的将数据以文件的形式保存下来记录（服务器挂掉不会影响数据）
     setInterval(() => {
-        img.write(path.join(__dirname, './processedImg.png'), () => {
-            console.log('data of img.png saved!')
-        })
+        console.log('pending...')
+        let now = Date.now()
+        // now是一直在变化的，只要某次画点更新之后的之间与本次时间接近则保存文件
+        if(now - lastUpdate < 3000) {
+            img.write(path.join(__dirname, './painterImg.png'), () => {
+                console.log('data of img.png saved!', now)
+            })
+        }
     },3000)
     // 用websocket通信
     wss.on('connection', (ws, req) => {
@@ -56,6 +62,7 @@ async function main() {
                 // 不能超出画板长宽范围
                 if (x >= 0 && y >= 0 && x < width && y < height) {
                     lastDraw = now // 更新lastDraw
+                    lastUpdate = now //更新lastUpdate
                     img.setPixelColor(Jimp.cssColorToHex(color), x, y)
                     // wss clients 对所有客户端发送更新
                     wss.clients.forEach(client => {
