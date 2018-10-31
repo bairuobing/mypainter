@@ -54,7 +54,7 @@
 <body>
     <div id="app">
         <div class="wrapper" ref="wrapper">
-            <canvas @mousedown="prepareDrag" @click="handleCanvasClick" ref="canvas" :width="width" :height="height" style="top:0;left:0;"></canvas>
+            <canvas @mousedown="prepareDrag" ref="canvas" :width="width" :height="height" style="top:0;left:0;"></canvas>
         </div>
         <button @click="startPickingColor">{{isPickingColor ? '正在取色' : '取色'}}</button>
         <input type="color" v-model="color">
@@ -86,7 +86,8 @@
         methods: {
             // 拖拽
             prepareDrag: function(e) {
-                
+                // 由于click 与 move 事件有冲突，设置标志确定是否发生移动
+                let moved = false
                 // 绑定 mousemove 和 mouseup 俩事件
                 let canvas = this.$refs.canvas
                 // 不要用放大过的位置
@@ -96,19 +97,35 @@
                 let posX = parseInt(canvas.style.left)
                 let posY = parseInt(canvas.style.top)
                 // 定义在外层作用域的变量用来解绑或者绑定事件
-                var moveHandler
+                let moveHandler
+                let upHandler
                 canvas.addEventListener('mousemove', moveHandler = e => {
                     let currX = e.clientX
                     let currY = e.clientY
                     let diffX = currX - startX
                     let diffY = currY - startY
+                    if(diffX > 3 || diffY > 3){
+                        moved = true
+                    }
                     canvas.style.left = posX + diffX + 'px'
                     canvas.style.top = posY + diffY + 'px'
                     console.log(posX, diffX)
                 })
 
-                canvas.addEventListener('mouseup', e => {
+                canvas.addEventListener('mouseup', upHandler = e => {
+                    var currX = e.clientX
+                    var currY = e.clientY
+                    var diffX = currX - startX
+                    var diffY = currY - startY
+                    if (Math.sqrt(diffX ** 2 + diffY**2) > 3) {
+                        moved = true
+                    }
                     canvas.removeEventListener('mousemove', moveHandler)
+                    canvas.removeEventListener('mouseup', upHandler)
+
+                    if (!moved) {
+                        this.handleCanvasClick(e)
+                    }
                 })
             },
             // 制作一个去色箭头指针
@@ -177,8 +194,7 @@
             },
             getCurrHoverColor: function(e) {
                 // 更加精准的 canvas像素坐标，不会因为放大缩小而改变实际坐标
-                let x = e.offsetX
-                let y = e.offsetY
+                var {x, y} = this.getMousePosition(e)
                 // 如何获取 canvas 的颜色，获取之后是一串数组（RGBA）
                 let p = this.ctx.getImageData(x, y, 1, 1).data
                 let hexColor = this.rgba2hex(p)
@@ -192,15 +208,31 @@
                 this.$refs.canvas.removeEventListener('mousemove', this.updateCursor)
                 this.$refs.canvas.style.cursor = ``
             },
-            drawDot: function(e) {
-                console.log('(' + e.offsetX + ',' + e.offsetY + ')')
-                // 坐标有误差，在发送时作出修正
+            /**
+            * 通过一个鼠标事件对象获取鼠标点击的画布中的像素的坐标
+            * 注意返回的是画布中像素的位置，而非鼠标点击的css位置
+            * 即与画面的放大无关，且总是返回整数
+            *
+            * 全都使用相对于视口的尺寸计算
+            * 
+            * @param  {MouseEvent} e 事件对象
+            * @return {Object}       坐标对象
+            */
+            getMousePosition(e) {
+                 // 坐标有误差，在发送时作出修正
                 let clientX = e.clientX // 相对于视口
                 let clientY = e.clientY
                 // getBoundingclientRect 也相对于视口，与clientX 作差即误差（并除以系数处理）
                 let rect = this.$refs.canvas.getBoundingClientRect()
+                // 正数浮点数与0 或运算 取整
                 let x = (clientX - rect.left) / this.zoomFactor | 0
                 let y = (clientY - rect.top) / this.zoomFactor | 0
+                return {x, y}
+            },
+            drawDot: function(e) {
+                console.log('(' + e.offsetX + ',' + e.offsetY + ')')
+                var {x, y} = this.getMousePosition(e)
+                console.log(x,y)
                 // 该函数参数表示(绑定的)鼠标点击事件（e），通过事件来追踪其点击的像素坐标
                 this.ws.send(JSON.stringify({
                     type: 'drawDot',
@@ -213,7 +245,8 @@
             // 放大
             initZoom: function() {
                 let canvas = this.$refs.canvas
-                canvas.addEventListener('mousewheel', (e) => {
+                let wrapper = this.$refs.wrapper
+                wrapper.addEventListener('mousewheel', (e) => {
                     e.preventDefault()
                     if(e.deltaY < 0){
                         this.zoomFactor = this.zoomFactor * 1.25
