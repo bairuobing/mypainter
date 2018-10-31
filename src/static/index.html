@@ -11,18 +11,26 @@
     body {
         background-color: rgb(124, 123, 117);
     }
-    .canvas {
-        text-align: center;
+
+    #app {
+        width: 522px;
+        margin: 0 auto;
+    }
+
+    .wrapper {
+        position: relative;
+        width: 512px;
+        height: 512px;
+        overflow: hidden;
+        box-shadow: 0px 0px 17px #000000;
     }
 
     canvas {
-        display: inline-block;
+        position: absolute;
         vertical-align: bottom;
     }
 
     .common-colors {
-        width: 512px;
-        margin: 0 auto;
         background-color: #eee;
         padding: 3px;
     }
@@ -45,8 +53,8 @@
 
 <body>
     <div id="app">
-        <div class="canvas">
-            <canvas @click="handleCanvasClick" ref="canvas" :width="width" :height="height"></canvas>
+        <div class="wrapper" ref="wrapper">
+            <canvas @mousedown="prepareDrag" @click="handleCanvasClick" ref="canvas" :width="width" :height="height" style="top:0;left:0;"></canvas>
         </div>
         <button @click="startPickingColor">{{isPickingColor ? '正在取色' : '取色'}}</button>
         <input type="color" v-model="color">
@@ -72,9 +80,37 @@
             color: 'black',
             width: 512,
             height: 512,
-            isPickingColor: false
+            isPickingColor: false,
+            zoomFactor: 1
         },
         methods: {
+            // 拖拽
+            prepareDrag: function(e) {
+                
+                // 绑定 mousemove 和 mouseup 俩事件
+                let canvas = this.$refs.canvas
+                // 不要用放大过的位置
+                let startX = e.clientX
+                let startY = e.clientY
+                // 去下标
+                let posX = parseInt(canvas.style.left)
+                let posY = parseInt(canvas.style.top)
+                // 定义在外层作用域的变量用来解绑或者绑定事件
+                var moveHandler
+                canvas.addEventListener('mousemove', moveHandler = e => {
+                    let currX = e.clientX
+                    let currY = e.clientY
+                    let diffX = currX - startX
+                    let diffY = currY - startY
+                    canvas.style.left = posX + diffX + 'px'
+                    canvas.style.top = posY + diffY + 'px'
+                    console.log(posX, diffX)
+                })
+
+                canvas.addEventListener('mouseup', e => {
+                    canvas.removeEventListener('mousemove', moveHandler)
+                })
+            },
             // 制作一个去色箭头指针
             makeCursorImg: function(color) {
                 var cursor = document.createElement('canvas')
@@ -157,16 +193,48 @@
                 this.$refs.canvas.style.cursor = ``
             },
             drawDot: function(e) {
+                console.log('(' + e.offsetX + ',' + e.offsetY + ')')
+                // 坐标有误差，在发送时作出修正
+                let clientX = e.clientX // 相对于视口
+                let clientY = e.clientY
+                // getBoundingclientRect 也相对于视口，与clientX 作差即误差（并除以系数处理）
+                let rect = this.$refs.canvas.getBoundingClientRect()
+                let x = (clientX - rect.left) / this.zoomFactor | 0
+                let y = (clientY - rect.top) / this.zoomFactor | 0
                 // 该函数参数表示(绑定的)鼠标点击事件（e），通过事件来追踪其点击的像素坐标
                 this.ws.send(JSON.stringify({
                     type: 'drawDot',
-                    x: e.layerX,
-                    y: e.layerY,
+                    x: x,
+                    y: y,
                     color: this.color
                 }))
+            },
+            // Vue HTML标签属性不区分大小写，所以带有大小写区别的事件不应在标签处绑定
+            // 放大
+            initZoom: function() {
+                let canvas = this.$refs.canvas
+                canvas.addEventListener('mousewheel', (e) => {
+                    e.preventDefault()
+                    if(e.deltaY < 0){
+                        this.zoomFactor = this.zoomFactor * 1.25
+                    } else {
+                        this.zoomFactor = this.zoomFactor * 0.8
+                    }
+                    if (this.zoomFactor < 1) {
+                        // 当缩小到原图大小，应使整个图像保持在视野中
+                        canvas.style.top = '0px'
+                        canvas.style.left = '0px'
+                        this.zoomFactor = 1
+                    } else if (this.zoomFactor > 17){
+                        this.zoomFactor *= 0.8
+                    }
+                    canvas.style.transform = `scale(${this.zoomFactor})`
+                })
             }
         },
         mounted() {
+            // 放大
+            this.initZoom()
             var canvas = this.$refs.canvas
             // 去模糊
             canvas.style.imageRendering = 'pixelated'
