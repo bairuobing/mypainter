@@ -7,70 +7,36 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>pixel-painter</title>
 </head>
-<style>
-    body {
-        background-color: rgb(124, 123, 117);
-    }
-
-    #app {
-        width: 522px;
-        margin: 0 auto;
-    }
-
-    .wrapper {
-        position: relative;
-        width: 512px;
-        height: 512px;
-        overflow: hidden;
-        box-shadow: 0px 0px 17px #000000;
-    }
-
-    canvas {
-        position: absolute;
-        vertical-align: bottom;
-    }
-
-    .common-colors {
-        background-color: #eee;
-        padding: 3px;
-    }
-
-    .color-card {
-        width: 22px;
-        height: 22px;
-        background-color: currentColor;
-        border-radius: 3px;
-        display: inline-block;
-        margin: 5px;
-        vertical-align: bottom;
-    }
-
-    .color-card.active {
-        border: 2px solid;
-        margin: 3px;
-    }
-</style>
+<link rel="stylesheet" href="./css/main.css">
 
 <body>
+    <div class="nav">
+        <a href="https://github.com/bairuobing" target="_black">
+            <i class="iconfont">&#xea0a;&nbsp;&nbsp;Bairuobing</i>
+        </a>
+    </div>
     <div id="app">
         <div class="wrapper" ref="wrapper">
-            <canvas @mousedown="prepareDrag" ref="canvas" :width="width" :height="height" style="top:0;left:0;"></canvas>
+            <canvas @mousedown="prepareDrag" @mousemove="getSite" ref="canvas" :width="width" :height="height" style="top:0;left:0;"></canvas>
         </div>
-        <button @click="startPickingColor">{{isPickingColor ? '正在取色' : '取色'}}</button>
-        <input type="color" v-model="color">
-        <span >在线人数：{{onlineCount}}</span>
+        <button @click="startPickingColor" class="pick-btn">
+            <unpicking v-if="!isPickingColor"></unpicking>
+            <picking v-if="isPickingColor"></picking>
+        </button>
+        <input type="color" v-model="color" style="border-radius: 5px;">
+        <span class="font">{{`(${currSite.x},${currSite.y})`}}</span>
+        <span class="olCount"><i class="font">Online&nbsp;{{onlineCount}}</i></span>
         <div class="common-colors">
             <span v-for="c of commonColors" @click="color=c" :class="{'color-card':true,active:c==color}" :style="{color:c}"></span>
         </div>
     </div>
 </body>
-
-<!-- <template>
-    <div class="row" v-for="(row, y) in pixelData">
-        <span class="dot" @click="drawDot(x, y, color)" v-for="(dotColor, x) in row" :style="{background: dotColor}"></span>
-    </div>
-</template> -->
-
+<template id="picking">
+    <i class="iconfont" id="ing">&#xea0c;</i>
+</template>
+<template id="unpicking">
+    <i class="iconfont" id="uning">&#xe702;</i>
+</template>
 <script src="./vue-2.5.17.js"></script>
 <script src="./js/painter.js"></script>
 

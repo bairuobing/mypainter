@@ -4,7 +4,7 @@ const ws = require('ws')
 const path = require('path')
 const express = require('express')
 const Jimp = require('jimp')
-const port = 9095
+const port = 1996
 
 const app = express()
 const server = http.createServer(app)
@@ -54,7 +54,6 @@ async function main() {
                 count: wss.clients.size,
             }))
         })
-
 
         // 人走也发一次
         ws.on('close', () => {
