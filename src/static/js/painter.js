@@ -154,12 +154,13 @@ const app = new Vue({
             // 正数浮点数与0 或运算 取整
             let x = (clientX - rect.left) / this.zoomFactor | 0
             let y = (clientY - rect.top) / this.zoomFactor | 0
+            console.log(x,y)
             return {x, y}
+            
         },
         drawDot: function(e) {
-            console.log('(' + e.offsetX + ',' + e.offsetY + ')')
             var {x, y} = this.getMousePosition(e)
-            console.log(x,y)
+            console.log('(' + x + ',' + y + ')')
             // 该函数参数表示(绑定的)鼠标点击事件（e），通过事件来追踪其点击的像素坐标
             this.ws.send(JSON.stringify({
                 type: 'drawDot',
@@ -169,8 +170,9 @@ const app = new Vue({
             }))
         },
         // Vue HTML标签属性不区分大小写，所以带有大小写区别的事件不应在标签处绑定
-        // 放大
-        initZoom: function() {
+        // 放大, 将放大的倍数均摊到每一份放大倍数上
+        initZoom: function(e) {
+            let prevFactor = this.zoomFactor // 计算放大比例用
             let canvas = this.$refs.canvas
             let wrapper = this.$refs.wrapper
             wrapper.addEventListener('mousewheel', (e) => {
@@ -181,13 +183,25 @@ const app = new Vue({
                     this.zoomFactor = this.zoomFactor * 0.8
                 }
                 if (this.zoomFactor < 1) {
-                    // 当缩小到原图大小，应使整个图像保持在视野中
-                    canvas.style.top = '0px'
-                    canvas.style.left = '0px'
                     this.zoomFactor = 1
-                } else if (this.zoomFactor > 17){
+                } else if (this.zoomFactor > 25){
                     this.zoomFactor *= 0.8
                 }
+                
+                let difFac = parseInt(this.zoomFactor / prevFactor)
+                let {x, y} = this.getMousePosition(e)
+                
+                // 差值 = 指向坐标 - 中心点
+                let difX = parseInt(x - (this.width / 2 | 0))
+                let difY = parseInt(y - (this.height / 2 | 0))
+                console.log(difX,difY)
+                canvas.style.top = difX  + 'px'
+                canvas.style.left = difY  + 'px'
+                if(this.zoomFactor == 1) {
+                    // 当缩小到原图大小，应使整个图像保持在视野中
+                   canvas.style.top = '0px'
+                   canvas.style.left = '0px'
+               }
                 canvas.style.transform = `scale(${this.zoomFactor})`
             })
         }
