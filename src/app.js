@@ -23,6 +23,7 @@ async function main() {
     } catch (error) {
         // 使用 jimp 生成白色图片
         img = new Jimp(256, 256, 0xffffffff)
+        console.log(img.getPixelColor(0,0))
     }
 
     let lastUpdate = 0
@@ -39,11 +40,13 @@ async function main() {
     }, 3000)
     // 用websocket通信
     wss.on('connection', (ws, req) => {
+        console.log('connecting...')
         img.getBuffer(Jimp.MIME_PNG, (err, buf) => {
             if (err) {
                 console.log('err', err)
             } else {
-                ws.send(buf)
+                // ws.send(buf)
+                ws.send(img.bitmap.data)
             }
         })
         // 向每个在线用户发
@@ -57,6 +60,7 @@ async function main() {
 
         // 人走也发一次
         ws.on('close', () => {
+            console.log('close...')
             // 向每一个在线用户发送
             wss.clients.forEach(ws => {
                 ws.send(JSON.stringify({
@@ -69,6 +73,7 @@ async function main() {
         // 每一次链接中不应该使得消息无间断发送，指定一个时间间隔
         let lastDraw = 0 // 最后一次戳点时间戳
         ws.on('message', msg => {
+            console.log("msg:" + msg)
             msg = JSON.parse(msg)
             // 解构赋值
             var { x, y, color } = msg
@@ -97,6 +102,7 @@ async function main() {
     })
 
     app.use(express.static(path.join(__dirname, './static')))
+    app.use(express.static(path.join(__dirname, '../src')))
 
     server.listen(port, () => {
         console.log('listening on port ', port)
