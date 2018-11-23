@@ -18,7 +18,7 @@
 
 ## 版本
 
- ### 成长迭代版本
+ ### 项目成长迭代
 
 - 线上交互画板功能
 
@@ -52,10 +52,32 @@
 - 增加坐标指示优化界面样式
 - 移动端交互上线
 
-###线上版本
+### 线上版本
 
 - v0.1 
-  - 部署到```boolebook.com```
+  - 部署到```https://pxl.boolebook.com```
+- V0.2
+  - 实现移动端交互
+
+
+
+## 效果展示
+
+### PC端
+
+![Imgur](https://i.imgur.com/vhbp6Sq.jpg)
+
+
+
+
+
+### 移动端
+
+![Imgur](https://i.imgur.com/WlnAMb1.jpg)
+
+
+
+
 
 ## 使用
 
