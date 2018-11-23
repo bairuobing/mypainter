@@ -9,16 +9,16 @@ const app = new Vue({
         isPickingColor: false,
         zoomFactor: 1,
         onlineCount: 0,
-        currSite: {x:'_',y:'_'}
+        currSite: { x: '_', y: '_' }
     },
     methods: {
         // 坐标获取
-        getSite: function(e) {
-            let {x, y} = this.getMousePosition(e)
+        getSite: function (e) {
+            let { x, y } = this.getMousePosition(e)
             this.currSite.x = x
             this.currSite.y = y
             let canvas = this.$refs.canvas
-            canvas.addEventListener('mouseout', (e)=> {
+            canvas.addEventListener('mouseout', (e) => {
                 this.currSite.x = '_'
                 this.currSite.y = '_'
             })
@@ -157,7 +157,6 @@ const app = new Vue({
             let x = (clientX - rect.left) / this.zoomFactor | 0
             let y = (clientY - rect.top) / this.zoomFactor | 0
             return { x, y }
-
         },
         getMousePositionCanvas(e) {
             // 坐标有误差，在发送时作出修正
@@ -169,6 +168,16 @@ const app = new Vue({
             let x = (clientX - rect.left) | 0
             let y = (clientY - rect.top) | 0
             return { x, y }
+        },
+        // 手指坐标
+        getFingerPositionCanvas(e) {
+            let {x,y} = e.center
+            // getBoundingclientRect 也相对于视口的 CSS坐标（top，left，bottom，right），做差便是相对于该元素
+            let rect = this.$refs.canvas.getBoundingClientRect()
+            // 正数浮点数与0 或运算 取整
+            let fx = (x - rect.left) | 0
+            let fy = (y - rect.top) | 0
+            return { fx, fy }
         },
         drawDot: function (e) {
             var { x, y } = this.getMousePosition(e)
@@ -186,11 +195,78 @@ const app = new Vue({
         initZoom: function (e) {
             let canvas = this.$refs.canvas
             let wrapper = this.$refs.wrapper
+
+            // 手机端双指放大
+            var phone = new Hammer(wrapper)
+
+            phone.get('pinch').set({ enable: true });
+            // 双指外向
+            phone.on('pinchout', (e) => {
+                e.preventDefault()
+                let preFactor = this.zoomFactor
+                let {fx,fy} = this.getFingerPositionCanvas(e)
+                let posX = parseInt(canvas.style.left)
+                let posY = parseInt(canvas.style.top)
+                console.log(fx,fy)
+                this.zoomFactor = this.zoomFactor * e.scale
+                if (this.zoomFactor > 35) {
+                    this.zoomFactor *= (1 / e.scale)
+                }
+                let mtp = this.zoomFactor / preFactor // 变化的倍数
+                // 缩放后的指针 相对 坐标
+                let cX = mtp * fx
+                let cY = mtp * fy
+
+                // 缩放中心（css设置为左上角(0,0)） 应当的位移(差值)
+                let diffX = cX - fx
+                let diffY = cY - fy
+                // console.log('放大中心应当偏移'+ diffX, diffY)
+                // console.log("相比于缩放前变化了" + mtp + "倍")
+                canvas.style.top = (posY - diffY) + 'px'
+                canvas.style.left = (posX - diffX) + 'px'
+                canvas.style.transform = `scale(${this.zoomFactor})`
+            })
+
+            phone.on('pinchin', (e) => {
+                e.preventDefault()
+                let preFactor = this.zoomFactor
+                let {fx,fy} = this.getFingerPositionCanvas(e)
+                console.log(fx,fy)
+                let posX = parseInt(canvas.style.left)
+                let posY = parseInt(canvas.style.top)
+                // console.log(e.scale)
+                this.zoomFactor = this.zoomFactor * e.scale
+                if (this.zoomFactor < 1) {
+                    this.zoomFactor = 1
+                    canvas.style.top = '0px'
+                    canvas.style.left = '0px'
+                } 
+                let mtp = this.zoomFactor / preFactor // 变化的倍数
+                // 缩放后的指针 相对 坐标
+                let cX = mtp * fx
+                let cY = mtp * fy
+
+                // 缩放中心（css设置为左上角(0,0)） 应当的位移(差值)
+                let diffX = cX - fx
+                let diffY = cY - fy
+                // console.log('放大中心应当偏移'+ diffX, diffY)
+                // console.log("相比于缩放前变化了" + mtp + "倍")
+                canvas.style.top = (posY - diffY) + 'px'
+                canvas.style.left = (posX - diffX) + 'px'
+                if (this.zoomFactor == 1) {
+                    // 当缩小到原图大小，应使整个图像保持在视野中
+                    canvas.style.left = '0px'
+                    canvas.style.top = '0px'
+                }
+                canvas.style.transform = `scale(${this.zoomFactor})`
+            })
+            // PC端放大功能
             wrapper.addEventListener('mousewheel', (e) => {
                 // 初始倍数（不一定为1）
                 let preFactor = this.zoomFactor
                 // 缩放之前的指针 相对 位置（缩放之后绝对位置应该在这个位置）
                 let { x, y } = this.getMousePositionCanvas(e)
+                console.log("m",x,y)
                 let posX = parseInt(canvas.style.left)
                 let posY = parseInt(canvas.style.top)
                 // console.log("图像原始css坐标"+ posX,posY)
@@ -227,11 +303,39 @@ const app = new Vue({
 
                 canvas.style.transform = `scale(${this.zoomFactor})`
             })
-        }
+        },
+        // 移动端拖动
+        initPhoneDrag: function() {
+            var ban = document.querySelector('.wrapper')
+            ban.addEventListener('touchmove', (e) => {
+                e.preventDefault()
+            })
+            let canvas = this.$refs.canvas
+            let wrapper = this.$refs.wrapper
+            // 手机端双指放大
+            var phone = new Hammer(wrapper)
+            
+            phone.on('panstart', (e) => {
+                let startX = e.center.x
+                let startY = e.center.y
+                
+                let posX = parseInt(canvas.style.left)
+                let posY = parseInt(canvas.style.top)
+                phone.on('panmove', (e) => {
+                    let currX = e.center.x
+                    let currY = e.center.y
+                    let diffX = currX - startX
+                    let diffY = currY - startY
+                    canvas.style.left = posX + diffX + 'px'
+                    canvas.style.top = posY + diffY + 'px'
+                })
+            })
+        },
     },
     mounted() {
         // 放大
         this.initZoom()
+        this.initPhoneDrag()
         var canvas = this.$refs.canvas
         // 去模糊
         canvas.style.imageRendering = 'pixelated'
@@ -239,15 +343,16 @@ const app = new Vue({
         var ctx = canvas.getContext('2d')
         // 保存一份 ctx 在 this（Vue） 上，以备用
         this.ctx = ctx
+        // 部署在 nginx 上 https 需要改成 wss 由于 ws 使用80端口，wss再443端口
         var ws = new WebSocket(`ws://${location.host}/yo`)
         this.ws = ws
         ws.onmessage = (e) => {//event
             // 接收到由ws发过来的 事件 messageEvent 中 blob 数据
             var data = e.data
-
             if (Object.prototype.toString.call(data) === '[object Blob]') {
                 console.log('Blob图片载入完成')
                 let tmpUrl = URL.createObjectURL(data)
+                console.log(tmpUrl, 'URL')
                 // console.log(tmpUrl)
                 let image = new Image()
                 // document.body.appendChild(image)
@@ -267,10 +372,10 @@ const app = new Vue({
                 } else if (data.type == 'onlineCount') {
                     let preCount = this.onlineCount
                     let currCount = data.count
-                    if(currCount > preCount) {
-                        console.log('一位玩家进入画室，当前在线人数 ' + this.onlineCount)    
+                    if (currCount > preCount) {
+                        console.log('一位玩家进入画室，当前在线人数 ' + this.onlineCount)
                     } else {
-                        console.log('一位玩家离开了，当前在线人数 ' + this.onlineCount)    
+                        console.log('一位玩家离开了，当前在线人数 ' + this.onlineCount)
                     }
                     this.onlineCount = data.count
                 }
@@ -279,10 +384,10 @@ const app = new Vue({
     },
     components: {
         'picking': {
-            template:'#picking',
+            template: '#picking',
         },
         'unpicking': {
-            template:'#unpicking',
+            template: '#unpicking',
         }
     }
 })
